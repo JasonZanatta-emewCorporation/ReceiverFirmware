@@ -225,6 +225,79 @@ void BT_Read128Bytes(uint16_t address){
 
 
 
+
+
+//Read 128 bytes from the flash memory according to an address
+void BT_PrintRead128Bytes(uint16_t address){
+
+	//Reset read and write buffers
+	memset(BT_WriteBuffer, 0x00 , sizeof(BT_WriteBuffer) );
+	memset(BT_ReadBuffer,  0x00 , sizeof(BT_ReadBuffer)  );
+
+
+	//Fill beginning of write buffer with read_transmit information
+	for(int i=0; i<19; i++ ){
+		BT_WriteBuffer[i]=read_Transmit[i];
+	}
+
+	//Set read address
+    BT_WriteBuffer[11] = (uint8_t) address;					//Add lower address byte to base address low byte (0x00) already in packet
+    BT_WriteBuffer[12] = (uint8_t) (address >> 8);			//Add upper address byte to base address high byte (0x40) already in packet
+
+
+    //Send command over uart1
+    HAL_UART_Transmit(&huart1, BT_WriteBuffer, sizeof(read_Transmit), 200 );
+
+    //Receive data over uart1
+    Status = HAL_UART_Receive(&huart1, BT_ReadBuffer, sizeof(BT_ReadBuffer), 400);
+
+	  if(Status == HAL_OK){
+		  _Bool TestFlag = true;
+	  	 for(int i=0; i<sizeof(read_Response); i++){
+	  		 if(BT_ReadBuffer[i] != read_Response[i] ){
+	  			TestFlag = false;
+	  		 }
+	  	 }
+
+	  	 if(TestFlag == true){
+
+	  		 int i=0;
+	  		 while(i<128){
+
+				 sprintf((char*)buf, "%.4X    ", address+i );
+				 HAL_UART_Transmit(&huart2, buf, strlen((char*)buf), 50 );
+
+				 for(int j=0; j<16; j++){
+					 sprintf((char*)buf, "%.2X ", BT_ReadBuffer[i+19] );
+					 HAL_UART_Transmit(&huart2, buf, strlen((char*)buf), 50 );
+					 if(j==7){
+						 sprintf((char*)buf, "    " );
+						 HAL_UART_Transmit(&huart2, buf, strlen((char*)buf), 50 );
+					 }
+					 if(j==15){
+						 sprintf((char*)buf, "   ;\r\n" );
+						 HAL_UART_Transmit(&huart2, buf, strlen((char*)buf), 50 );
+					 }
+					 i++;
+				 }
+	  		 }
+		  }else{
+			 sprintf((char*)buf, "BT Read Flash - Failed (Mismatch)\r\n");
+		  	 HAL_UART_Transmit(&huart2, buf, strlen((char*)buf), 50 );
+	  	 }
+	  }else{
+	  	 sprintf((char*)buf, "BT Read Flash - Failed (Timeout)\r\n");
+	  	 HAL_UART_Transmit(&huart2, buf, strlen((char*)buf), 50 );
+	  }
+
+	  HAL_Delay(10);
+
+}
+
+
+
+
+
 //Write 128 bytes from the flash memory according to an address
 void BT_Write128Bytes(uint16_t address, uint8_t *InputDataArray){
 
@@ -256,7 +329,7 @@ void BT_Write128Bytes(uint16_t address, uint8_t *InputDataArray){
     Status = HAL_UART_Receive(&huart1, BT_ReadBuffer, sizeof(write_Response), 400);
 
 	  if(Status == HAL_OK){
-		  _Bool TestFlag = true;
+		 _Bool TestFlag = true;
 	  	 for(int i=0; i<sizeof(write_Response); i++){
 	  		 if(BT_ReadBuffer[i] != write_Response[i] ){
 	  			TestFlag = false;
@@ -289,7 +362,45 @@ _Bool BT_CompareData(uint8_t *InputDataArray){
 
 
 
+void BT_MemoryDump(void){
+
+
+	 sprintf((char*)buf, "\n\n\n");
+	 HAL_UART_Transmit(&huart2, buf, strlen((char*)buf), 50 );
+
+
+	for(int addr=0x0000; addr<0x2000; addr=addr+0x0100){
+
+		 sprintf((char*)buf, "\n;;;      0  1  2  3  4  5  6  7     8  9  A  B  C  D  E  F\r\n");
+		 HAL_UART_Transmit(&huart2, buf, strlen((char*)buf), 50 );
+		 BT_PrintRead128Bytes(addr);
+		 BT_PrintRead128Bytes(addr+0x0080);
+
+	}
+
+
+	 sprintf((char*)buf, "\n\n\n");
+	 HAL_UART_Transmit(&huart2, buf, strlen((char*)buf), 50 );
+
+
+
+
+
+}
+
+
+
+
+
 void BT_ConfigRun(void){
+
+		/*
+		BT_EnterTestMode();			//Enter test mode
+		BT_OpenFlashMemory();		//Connect to flash memory
+		BT_MemoryDump();			//Print memory
+		BT_CloseFlashMemory();		//Disconnect to flash memory
+		BT_EnterAppMode();			//Enter test mode
+		*/
 
 	_Bool TestFlag = true;
 
@@ -313,6 +424,7 @@ void BT_ConfigRun(void){
 	 HAL_UART_Transmit(&huart2, buf, strlen((char*)buf), 50 );
  	 sprintf((char*)buf, "Status of Compare is %d \r\n\n", TestFlag);
  	 HAL_UART_Transmit(&huart2, buf, strlen((char*)buf), 50 );
+
 
  	 if(TestFlag!=true){
 
@@ -356,6 +468,10 @@ void BT_ConfigRun(void){
 	BT_EnterAppMode();			//Enter test mode
 
 
+
 }
+
+
+
 
 

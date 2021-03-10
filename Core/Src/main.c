@@ -104,12 +104,40 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+
+
+  HAL_StatusTypeDef RetStatus;
+
+  uint8_t RxBuffer[4] = {0};
+  _Bool RunFlag = true;
+
+
+  while (RunFlag == true) {
+
+	//Receive data over uart1
+	RetStatus = HAL_UART_Receive(&huart1, RxBuffer, 1, 400);
+	if(RetStatus == HAL_OK){
+		 sprintf((char*)buf, "Message Rec\r\n");
+	  	 HAL_UART_Transmit(&huart2, buf, strlen((char*)buf), 50 );
+	  	 RunFlag = false;
+	}else{
+		sprintf((char*)buf, "Rec Failed\r\n");
+		HAL_UART_Transmit(&huart2, buf, strlen((char*)buf), 50 );
+	}
+	HAL_Delay(50);
+
+  }
+
+	 sprintf((char*)buf, "Message Received is: %c\r\n", RxBuffer[0] );
+	 HAL_UART_Transmit(&huart2, buf, strlen((char*)buf), 50 );
+
+	 sprintf((char*)buf, "Finished\r\n");
+	 HAL_UART_Transmit(&huart2, buf, strlen((char*)buf), 50 );
+
+
     /* USER CODE END WHILE */
 	HAL_Delay(50);
     /* USER CODE BEGIN 3 */
-  }
   /* USER CODE END 3 */
 }
 
